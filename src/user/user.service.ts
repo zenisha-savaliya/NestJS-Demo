@@ -1,45 +1,47 @@
 import { Injectable } from '@nestjs/common';
 import { UserDTO } from './user-DTO';
 import { CreateUserDTO } from './create-user-dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class UserService {
+  constructor(
+    @InjectRepository(UserDTO)
+    private userRepository: Repository<UserDTO>,
+  ) {}
   private users: UserDTO[] = [];
   private idCounter = 1;
 
-  create(createUserDto: CreateUserDTO): UserDTO {
-    const newUser = { id: this.idCounter++, ...createUserDto };
-    this.users.push(newUser);
-    return newUser;
+  create(createUserDto: CreateUserDTO): Promise<UserDTO> {
+    const user = this.userRepository.create(createUserDto);
+    return this.userRepository.save(user);
   }
 
-  findAll(): UserDTO[] {
-    return this.users;
+  findAll(): Promise<UserDTO[]> {
+    return this.userRepository.find();
   }
 
-  findOne(id: number): UserDTO {
-    const user = this.users.find((user) => user.id === id);
+  findOne(id: number): Promise<UserDTO> {
+    return this.userRepository.findOne({ where: { id } }).then((user) => {
+      if (!user) {
+        throw new Error(`User with id ${id} not found`);
+      }
+      return user;
+    });
+  }
+
+  async update(id: number, updateUserDto: CreateUserDTO): Promise<UserDTO> {
+    await this.userRepository.update(id, updateUserDto);
+    const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new Error(`User with id ${id} not found`);
     }
     return user;
   }
 
-  update(id: number, updateUserDto: CreateUserDTO): UserDTO {
-    const userIndex = this.users.findIndex((user) => user.id === id);
-    if (userIndex > -1) {
-      this.users[userIndex] = { id, ...updateUserDto };
-      return this.users[userIndex];
-    }
-    throw new Error(`User with id ${id} not found`);
-  }
-
-  remove(id: number): boolean {
-    const index = this.users.findIndex((user) => user.id === id);
-    if (index > -1) {
-      this.users.splice(index, 1);
-      return true;
-    }
-    return false;
+  async remove(id: number): Promise<boolean> {
+    const result = await this.userRepository.delete(id);
+    return (result.affected ?? 0) > 0;
   }
 }
