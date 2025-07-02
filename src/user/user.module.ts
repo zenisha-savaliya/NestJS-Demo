@@ -8,5 +8,6 @@ import { UserDTO } from './user-DTO';
   imports: [TypeOrmModule.forFeature([UserDTO])],
   controllers: [UserController],
   providers: [UserService],
+  exports: [UserService],
 })
 export class UserModule {}
